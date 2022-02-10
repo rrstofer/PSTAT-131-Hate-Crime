@@ -1,0 +1,53 @@
+---
+title: "Final Project"
+author: "Ryan Stofer"
+date: "2/7/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, warning =  F, results = 'hide'}
+library(tidyverse)
+```
+
+Load the csv files:
+```{r}
+pop_full <- read.csv(file = 'ARS_population.csv')
+hc_full <- read.csv(file = 'hate_crime.csv')
+```
+
+Head of files:
+```{r}
+head(pop_full)
+head(hc_full)
+```
+
+Remove unnecessary columns:
+```{r}
+hc_1 <- select(hc_full, select = -c(INCIDENT_ID, ORI, PUB_AGENCY_NAME, PUB_AGENCY_UNIT,
+                                    DIVISION_NAME, AGENCY_TYPE_NAME))
+pop_1 <- select(pop_full, select = -c(SUMLEV, STATE, DIVISION, CENSUS2010POP, 
+                                      ESTIMATESBASE2010))
+pop_1 <- pop_1 %>%
+  rename(pop_2010 = POPESTIMATE2010, pop_2011 = POPESTIMATE2011,
+         pop_2012 = POPESTIMATE2012, pop_2013 = POPESTIMATE2013,
+         pop_2014 = POPESTIMATE2014, pop_2015 = POPESTIMATE2015,
+         pop_2016 = POPESTIMATE2016, pop_2017 = POPESTIMATE2017,
+         pop_2018 = POPESTIMATE2018, pop_2019 = POPESTIMATE2019)
+hc_2 <- hc_1 %>% 
+  filter(DATA_YEAR > 2009 & DATA_YEAR < 2020)
+summary(hc_2$REGION_NAME)
+# Region_Name = Other refers to federal cases led by the FBI (not location specific)
+# Only 210 observations for 2010-2019
+filter(hc_1, REGION_NAME == 'Other')
+head(pop_1)
+```
+
+
+```{r}
+pop_1$age_group <- cut(pop_1$AGE, c(0,18,30,65,84,85), include.lowest = T)
+head(filter(pop_1, AGE == 0))
+```
