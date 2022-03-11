@@ -6,7 +6,12 @@ output: html_document
 ---
 
 ```{r}
+library(plyr)
+library(tidyr)
+library(ggplot2)
+library(reshape2)
 library(dplyr)
+library(sjmisc)
 hate <- read.csv("hate_crime.csv")
 set.seed(1234321)
 ```
@@ -15,6 +20,8 @@ set.seed(1234321)
 hate <- filter(hate,DATA_YEAR > 2009 & DATA_YEAR < 2020)
 
 hate <- filter(hate,OFFENDER_RACE!="Unknown")
+
+hate<- filter(hate,OFFENDER_RACE!="")
 ```
 
 ```{r}
@@ -26,7 +33,9 @@ census$RACE[census$RACE==4]<-"Asian"
 census$RACE[census$RACE==5]<-"Native Hawaiian or Other Pacific Islander"
 census$RACE[census$RACE==6]<-"Multiple"
 
-name_pops = census %>% group_by(NAME) %>% summarise(POPESTIMATE2010=sum(POPESTIMATE2010),      POPESTIMATE2011=sum(POPESTIMATE2011),POPESTIMATE2012=sum(POPESTIMATE2012),POPESTIMATE2013=sum(POPESTIMATE2013),POPESTIMATE2014=sum(POPESTIMATE2014),POPESTIMATE2015=sum(POPESTIMATE2015),POPESTIMATE2016=sum(POPESTIMATE2016),POPESTIMATE2017=sum(POPESTIMATE2017),POPESTIMATE2018=sum(POPESTIMATE2018),POPESTIMATE2019=sum(POPESTIMATE2019))
+name_pops = census %>% 
+  group_by(NAME) %>% 
+summarise(POPESTIMATE2010=sum(POPESTIMATE2010),      POPESTIMATE2011=sum(POPESTIMATE2011),POPESTIMATE2012=sum(POPESTIMATE2012),POPESTIMATE2013=sum(POPESTIMATE2013),POPESTIMATE2014=sum(POPESTIMATE2014),POPESTIMATE2015=sum(POPESTIMATE2015),POPESTIMATE2016=sum(POPESTIMATE2016),POPESTIMATE2017=sum(POPESTIMATE2017),POPESTIMATE2018=sum(POPESTIMATE2018),POPESTIMATE2019=sum(POPESTIMATE2019))
 
 race_pops = census %>% group_by(NAME,RACE) %>% summarise(POPESTIMATE2010=sum(POPESTIMATE2010),      POPESTIMATE2011=sum(POPESTIMATE2011),POPESTIMATE2012=sum(POPESTIMATE2012),POPESTIMATE2013=sum(POPESTIMATE2013),POPESTIMATE2014=sum(POPESTIMATE2014),POPESTIMATE2015=sum(POPESTIMATE2015),POPESTIMATE2016=sum(POPESTIMATE2016),POPESTIMATE2017=sum(POPESTIMATE2017),POPESTIMATE2018=sum(POPESTIMATE2018),POPESTIMATE2019=sum(POPESTIMATE2019))
   
@@ -51,7 +60,6 @@ hate <- mutate(hate,POP_OFFENDER_RACE = POP_RACE)
 ```
 
 ```{r}
-library(sjmisc)
 offenses <- unique(hate$OFFENSE_NAME)
 single = c()
 for (offense in offenses){
@@ -72,9 +80,6 @@ hate[[o]] = grepl(o,hate$OFFENSE_NAME)
 ```
 
 ```{r}
-# Load ggplot2
-library(ggplot2)
-
 counts=hate %>% select(c(`Aggravated Assault`:`Wire Fraud`)) %>% colSums()
 
 # Create data
@@ -90,8 +95,6 @@ ggplot(sig_offenses, aes(x=dist, y=reorder(offense,dist))) +
 ```
 
 ```{r}
-library(reshape2)
-library(plyr)
 o_summary = hate %>% select(c(DATA_YEAR,`Aggravated Assault`:`Wire Fraud`))
 res = ddply(o_summary , "DATA_YEAR", function(x) colSums(x[single]))
 total=rowSums(res[,2:47])
@@ -114,5 +117,125 @@ top6 = mlt_offense[which(mlt_offense$variable %in% offenses6),]
 ggplot(top6, aes(x = DATA_YEAR, y = value, color = variable)) + geom_line() + geom_point() + ggtitle("Proportion of hate crime type per year") + 
   xlab("Year") + ylab("Proportion of hate crime")  + 
   scale_x_continuous(breaks=seq(2010,2019,1))
+```
+
+
+##RYANS WORK
+
+```{r add-pop-col}
+bias = hate$BIAS_DESC
+hate$BIAS_DESC[37784]
+```
+
+```{r add-bias-columns}
+  hate$Black <- grepl("Anti-Black", hate$BIAS_DESC)
+  hate$Gay <- grepl("Anti-Gay", hate$BIAS_DESC)
+  hate$White <- grepl("Anti-White", hate$BIAS_DESC)
+  hate$Islamic <- grepl("Anti-Islamic", hate$BIAS_DESC)
+  hate$Mental <- grepl("Anti-Mental", hate$BIAS_DESC)
+  hate$Race <- grepl("Race/", hate$BIAS_DESC)
+  hate$Mult_Religions <- grepl("Religions", hate$BIAS_DESC)
+  hate$Hispanic <- grepl("Anti-Hispanic", hate$BIAS_DESC)
+  hate$Religion <- grepl("Anti-Other Religion", hate$BIAS_DESC)
+  hate$Asian <- grepl("Anti-Asian", hate$BIAS_DESC)
+  hate$Lesbian <- grepl("Anti-Lesbian ", hate$BIAS_DESC)
+  hate$Catholic <- grepl("Anti-Catholic", hate$BIAS_DESC)
+  hate$LGBT <- grepl("Anti-Lesbian, Gay", hate$BIAS_DESC)
+  hate$Mult_Races <- grepl("Anti-Multiple Races", hate$BIAS_DESC)
+  hate$Physical <- grepl("Anti-Physical", hate$BIAS_DESC)
+  hate$Jewish <- grepl("Anti-Jewish", hate$BIAS_DESC)
+  hate$Native <- grepl("Alaska", hate$BIAS_DESC)
+  hate$Bisexual <- grepl("Anti-Bisexual", hate$BIAS_DESC)
+  hate$Heterosexual <- grepl("Anti-Heterosexual", hate$BIAS_DESC)
+  hate$Protestant <- grepl("Anti-Protestant", hate$BIAS_DESC)
+  hate$Atheism <- grepl("Anti-Atheism", hate$BIAS_DESC)
+  hate$Gender <- grepl("Anti-Gender", hate$BIAS_DESC)
+  hate$Female <- grepl("Anti-Female", hate$BIAS_DESC)
+  hate$Male <- grepl("Anti-Male", hate$BIAS_DESC)
+  hate$Transgender <- grepl("Anti-Trans", hate$BIAS_DESC)
+  hate$Islander <- grepl("Anti-Native Hawaii", hate$BIAS_DESC)
+  hate$Arab <- grepl("Anti-Arab", hate$BIAS_DESC)
+  hate$Buddhist <- grepl("Anti-Buddhist", hate$BIAS_DESC)
+  hate$Sikh <- grepl("Anti-Sikh", hate$BIAS_DESC)
+  hate$Christian <- grepl("Anti-Other Christian", hate$BIAS_DESC)
+  hate$Orthodox <- grepl("Orthodox", hate$BIAS_DESC)
+  hate$Hindu <- grepl("Anti-Hindu", hate$BIAS_DESC)
+  hate$Mormon <- grepl("Anti-Mormon", hate$BIAS_DESC)
+  hate$Jehovah <- grepl("Anti-Jehovah", hate$BIAS_DESC)
+  
+bias_names <- c("Black","Gay","White","Islamic","Mental","Race",
+                "Mult_Religions","Hispanic","Religion","Asian",
+                "Lesbian","Catholic","LGBT","Mult_Races","Physical",
+                "Jewish","Native","Bisexual","Heterosexual","Protestant",
+                "Atheism","Gender","Female","Male","Transgender",
+                "Islander","Arab","Buddhist","Sikh","Christian", "Orthodox",
+                "Hindu","Mormon","Jehovah")
+```
+
+```{r plot-EDA-1}
+
+bias_summary = hate %>% select(c(DATA_YEAR, Black:Jehovah))
+res = ddply(bias_summary , "DATA_YEAR", function(x) colSums(x[bias_names]))
+head(res)
+total = rowSums(res[,2:35])
+for (i in bias_names){
+  res[[i]]=res[[i]]/total
+}
+melt_bias = melt(res,id.vars="DATA_YEAR", measure.vars= bias_names)
+sum(melt_bias$value)
+ggplot(melt_bias, aes(x = DATA_YEAR, y = value, color = variable)) + geom_line() + geom_point() + ggtitle("Proportion of hate crime type per year") + 
+  xlab("Year") + ylab("Proportion of hate crime")  + 
+  scale_x_continuous(breaks=seq(2010,2019,1))
+top_5_bias <- aggregate(melt_bias$value, by=list(Bias=melt_bias$variable), FUN=sum) 
+top_5_bias <- top_5_bias %>%
+    arrange(desc(x)) %>%
+    slice(1:5) 
+head(top_5_bias)
+```
+
+```{r plot-EDA-2}
+bias_state_summary = hate %>% select(c(DATA_YEAR, STATE_ABBR, Black:Jehovah))
+res_state = ddply(bias_state_summary , c("DATA_YEAR","STATE_ABBR"), function(x) colSums(x[bias_names]))
+head(res_state)
+total = rowSums(res_state[,3:36])
+for (i in bias_names){
+  res_state[[i]]=res_state[[i]]/total
+}
+melt_bias_state = melt(res_state, id.vars=c("DATA_YEAR","STATE_ABBR"), measure.vars= bias_names)
+head(melt_bias_state)
+state_bias_1 <- melt_bias_state %>% filter(STATE_ABBR %in% 
+                                              c("CA", "TX", "FL", "NY", "PA", 
+                                                "IL", "OH", "GA", "NC", "MI", 
+                                                "WY", "VT", "DC", "AL", "ND",
+                                                "SD", "DE", "RI", "MT", "ME"))
+head(state_bias_1)
+state_bias <- state_bias_1 %>% filter(variable %in% c("Black","Gay","White","Hispanic","LGBT"))
+state_bias$STATE_ABBR <- as.factor(state_bias$STATE_ABBR) 
+head(state_bias)
+state_bias$STATE_ABBR <- factor(state_bias$STATE_ABBR, levels=c("CA","TX","FL","NY","PA",
+                                 "IL", "OH", "GA", "NC", "MI", 
+                                 "ME", "MT", "RI", "DE", "SD",
+                                 "ND", "AL", "DC", "VT", "WY"))
+head(state_bias)
+ggplot(state_bias, aes(x = DATA_YEAR, y = value, color = variable)) + geom_line() + geom_point() + ggtitle("Proportion of hate crime type per year") + 
+  xlab("Year") + ylab("Proportion of hate crime")  + 
+  scale_x_continuous(breaks=seq(2010,2019,1)) + facet_wrap(~ STATE_ABBR)
+```
+
+#Heatmap of offender race vs bias desc
+```{r}
+offender_bias = hate %>% select(c(OFFENDER_RACE,bias_names))
+offender_bias_res = ddply(offender_bias , "OFFENDER_RACE", function(x) colSums(x[bias_names]))
+ototal=rowSums(offender_bias_res[,2:35])
+for (i in bias_names){
+  offender_bias_res[[i]]=offender_bias_res[[i]]/ototal
+}
+
+offender_bias_melt = melt(offender_bias_res,id.vars="OFFENDER_RACE",measure.vars=bias_names)
+
+cut_offender_bias <- offender_bias_melt %>% filter(variable %in% c("Black","Gay","White","Hispanic","LGBT"))
+
+ggplot(cut_offender_bias, aes(variable,OFFENDER_RACE)) +                           
+  geom_tile(aes(fill = value))
 ```
 
