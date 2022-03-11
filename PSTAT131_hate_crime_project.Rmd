@@ -1,0 +1,118 @@
+---
+title: "Hate_crime"
+author: "Mitchell Rapaport"
+date: "1/20/2022"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+hate <- read.csv("hate_crime.csv")
+set.seed(1234321)
+```
+
+```{r}
+hate <- filter(hate,DATA_YEAR > 2009 & DATA_YEAR < 2020)
+
+hate <- filter(hate,OFFENDER_RACE!="Unknown")
+```
+
+```{r}
+census <- read.csv("ARS per state.csv")
+census$RACE[census$RACE==1]<-"White"
+census$RACE[census$RACE==2]<-"Black or African American"
+census$RACE[census$RACE==3]<-"American Indian or Alaska Native"
+census$RACE[census$RACE==4]<-"Asian"
+census$RACE[census$RACE==5]<-"Native Hawaiian or Other Pacific Islander"
+census$RACE[census$RACE==6]<-"Multiple"
+
+name_pops = census %>% group_by(NAME) %>% summarise(POPESTIMATE2010=sum(POPESTIMATE2010),      POPESTIMATE2011=sum(POPESTIMATE2011),POPESTIMATE2012=sum(POPESTIMATE2012),POPESTIMATE2013=sum(POPESTIMATE2013),POPESTIMATE2014=sum(POPESTIMATE2014),POPESTIMATE2015=sum(POPESTIMATE2015),POPESTIMATE2016=sum(POPESTIMATE2016),POPESTIMATE2017=sum(POPESTIMATE2017),POPESTIMATE2018=sum(POPESTIMATE2018),POPESTIMATE2019=sum(POPESTIMATE2019))
+
+race_pops = census %>% group_by(NAME,RACE) %>% summarise(POPESTIMATE2010=sum(POPESTIMATE2010),      POPESTIMATE2011=sum(POPESTIMATE2011),POPESTIMATE2012=sum(POPESTIMATE2012),POPESTIMATE2013=sum(POPESTIMATE2013),POPESTIMATE2014=sum(POPESTIMATE2014),POPESTIMATE2015=sum(POPESTIMATE2015),POPESTIMATE2016=sum(POPESTIMATE2016),POPESTIMATE2017=sum(POPESTIMATE2017),POPESTIMATE2018=sum(POPESTIMATE2018),POPESTIMATE2019=sum(POPESTIMATE2019))
+  
+```
+
+```{r}
+POP_STATE=c()
+POP_RACE=c()
+for (i in 1:nrow(hate)) {
+  year = hate[i,"DATA_YEAR"]
+  pop_est = paste("POPESTIMATE",as.character(year),sep="")
+  race = hate$OFFENDER_RACE[i]
+  state=hate$STATE_NAME[i]
+  POP_RACE = append(POP_RACE,as.integer(race_pops[c(race_pops$RACE==race & race_pops$NAME==state),pop_est]))
+  POP_STATE = append(POP_STATE,as.integer(name_pops[name_pops$NAME==state,pop_est]))
+}
+```
+
+```{r}
+hate <- mutate(hate,POP_STATE = POP_STATE)
+hate <- mutate(hate,POP_OFFENDER_RACE = POP_RACE)
+```
+
+```{r}
+library(sjmisc)
+offenses <- unique(hate$OFFENSE_NAME)
+single = c()
+for (offense in offenses){
+  x=as.list(strsplit(offense,";")[[1]])
+  for (i in x){
+  if (FALSE %in% str_contains(single,i)){
+    single <- append(single,i)
+  }
+  }
+  }
+```
+
+```{r}
+single = sort(single)
+for (o in single){
+hate[[o]] = grepl(o,hate$OFFENSE_NAME)
+}
+```
+
+```{r}
+# Load ggplot2
+library(ggplot2)
+
+counts=hate %>% select(c(`Aggravated Assault`:`Wire Fraud`)) %>% colSums()
+
+# Create data
+offense_dist = data.frame(dist=counts/sum(counts),offense=single)
+sig_offenses = offense_dist[which(offense_dist$dist>0.02),]
+sig_offenses = sig_offenses[order(sig_offenses$dist),]
+
+# Barplot
+ggplot(sig_offenses, aes(x=dist, y=reorder(offense,dist))) + 
+  geom_bar(stat = "identity",fill="steelblue") + 
+  ggtitle("Barplot of Highest Offense Rates") +
+  xlab("Rate") + ylab("Offense")
+```
+
+```{r}
+library(reshape2)
+library(plyr)
+o_summary = hate %>% select(c(DATA_YEAR,`Aggravated Assault`:`Wire Fraud`))
+res = ddply(o_summary , "DATA_YEAR", function(x) colSums(x[single]))
+total=rowSums(res[,2:47])
+for (i in single){
+  res[[i]]=res[[i]]/total
+}
+
+mlt_offense = melt(res,id.vars="DATA_YEAR",measure.vars=single)
+
+ggplot(mlt_offense, aes(x = DATA_YEAR, y = value, color = variable)) + geom_line() + geom_point() + ggtitle("Proportion of hate crime type per year") + 
+  xlab("Year") + ylab("Proportion of hate crime")  + 
+  scale_x_continuous(breaks=seq(2010,2019,1))
+```
+
+```{r}
+spike = mlt_offense[which(mlt_offense$value >0.02),]
+offenses6 = unique(spike$variable)
+top6 = mlt_offense[which(mlt_offense$variable %in% offenses6),]
+
+ggplot(top6, aes(x = DATA_YEAR, y = value, color = variable)) + geom_line() + geom_point() + ggtitle("Proportion of hate crime type per year") + 
+  xlab("Year") + ylab("Proportion of hate crime")  + 
+  scale_x_continuous(breaks=seq(2010,2019,1))
+```
+
